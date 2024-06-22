@@ -1,70 +1,37 @@
 import { useState } from "react";
+import useTodo, { ITodo } from "./hooks/useTodo";
 import "./App.css";
-
-type ITodo = {
-  id: number;
-  text: string;
-  checked: boolean;
-};
 
 function App() {
   const [todo, setTodo] = useState<string>("");
-  const [todos, setTodos] = useState<ITodo[]>(
-    localStorage.getItem("todos")
-      ? JSON.parse(localStorage.getItem("todos") ?? "")
-      : []
-  );
   const [todoEdit, setTodoEdit] = useState(false);
-  const [todoEditIndex, setTodoEditIndex] = useState(0);
+  const [editTodoId, setEditTodoId] = useState<number | null>(null);
 
-  const addTodo = () => {
-    if (todo.trim() !== "") {
-      setTodos([
-        ...todos,
-        { id: todos.length + 1, text: todo, checked: false },
-      ]);
-      localStorage.setItem(
-        "todos",
-        JSON.stringify([...todos, { text: todo, checked: false }])
-      );
-      setTodo("");
+  const { todos, addTodo, deleteTodo, toggleChecked, editTodo } = useTodo();
+
+  const handleAddOrEditTodo = () => {
+    if (todoEdit && editTodoId !== null) {
+      editTodo(editTodoId, todo);
+      setTodoEdit(false);
+      setEditTodoId(null);
+    } else {
+      addTodo(todo);
     }
+    setTodo("");
   };
 
-  const onClickChecked = (index: number) => {
-    const newTodos = [...todos];
-    newTodos[index].checked = !newTodos[index].checked;
-    setTodos(newTodos);
-    localStorage.setItem("todos", JSON.stringify(newTodos));
-  };
-
-  const deleteTodo = (index: number) => {
-    const isConfirm = window.confirm("Are you sure you want to delete?");
-    if (!isConfirm) return;
-    const newTodos = todos.filter((item: ITodo, i) => i !== index);
-    setTodos(newTodos);
-    localStorage.setItem("todos", JSON.stringify(newTodos));
-  };
-  const editTodo = (index: number) => {
+  const handleEditTodo = (id: number) => {
     const isConfirm = window.confirm("Are you sure you want to edit?");
     if (!isConfirm) return;
-    const todoChecked = todos[index].checked;
-    if (todoChecked) {
-      alert("You can't edit checked todo!");
+    const todoItem = todos.find((todo: ITodo) => todo.id === id);
+    if (!todoItem) return;
+    if (todoItem.checked) {
+      alert("You can't edit a checked todo!");
       return;
     }
-    setTodoEditIndex(index);
+    setEditTodoId(id);
     setTodoEdit(true);
-    setTodo(todos[index].text);
-  };
-
-  const editTodoText = () => {
-    const newTodos = [...todos];
-    newTodos[todoEditIndex].text = todo;
-    setTodos(newTodos);
-    localStorage.setItem("todos", JSON.stringify(newTodos));
-    setTodo("");
-    setTodoEdit(false);
+    setTodo(todoItem.text);
   };
 
   return (
@@ -76,15 +43,15 @@ function App() {
           value={todo}
           onChange={(e) => setTodo(e.target.value)}
         />
-        <button onClick={todoEdit ? editTodoText : addTodo}>
+        <button onClick={handleAddOrEditTodo}>
           {todoEdit ? "Edit Todo" : "Add Todo"}
         </button>
       </div>
       <div>
         <ul>
-          {todos.map((item, index) => (
+          {todos.map((item) => (
             <div
-              key={index}
+              key={item.id}
               style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -93,7 +60,7 @@ function App() {
             >
               <input
                 type="checkbox"
-                onChange={() => onClickChecked(index)}
+                onChange={() => toggleChecked(item.id)}
                 checked={item.checked}
               />
               <li
@@ -104,8 +71,8 @@ function App() {
               >
                 {item.text}
               </li>
-              <button onClick={() => deleteTodo(index)}>Delete</button>
-              <button onClick={() => editTodo(index)}>Edit</button>
+              <button onClick={() => deleteTodo(item.id)}>Delete</button>
+              <button onClick={() => handleEditTodo(item.id)}>Edit</button>
             </div>
           ))}
         </ul>
